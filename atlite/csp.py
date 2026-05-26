@@ -38,21 +38,4 @@ def calculate_dni(ds, solar_position=None, altitude_threshold=3.75):
         maximum solar altitude of 60 deg and 10h day time.
 
     """
-    if solar_position is None:
-        solar_position = SolarPosition(ds)
-
-    # solar altitude expected in rad, convert degrees (easier to specifcy) to match
-    altitude_threshold = radians(altitude_threshold)
-
-    # Sanitation of altitude values:
-    # Prevent high calculated DNI values during low solar altitudes (sunset / dawn)
-    # where sin(<low altitude>) results in a very low denominator in the DNI calculation
-    altitude = solar_position["altitude"]
-    altitude = altitude.where(lambda x: x > 0, np.nan)
-    altitude = altitude.where(lambda x: x > altitude_threshold, altitude_threshold)
-
-    # Calculate DNI and remove NaNs introduced during altitude sanitation
-    # DNI is determined either by dividing by cos(azimuth) or sin(altitude)
-    dni = ds["influx_direct"] / sin(altitude)
-
-    return dni
+    pass

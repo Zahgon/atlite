@@ -437,16 +437,7 @@ class ExclusionContainer:
             CRS of the raster. Specify this if the raster has invalid crs.
 
         """
-        d = dict(
-            raster=raster,
-            codes=codes,
-            buffer=buffer,
-            invert=invert,
-            nodata=nodata,
-            allow_no_overlap=allow_no_overlap,
-            crs=crs,
-        )
-        self.rasters.append(d)
+        pass
 
     def add_geometry(self, geometry, buffer=0, invert=False):
         """
@@ -464,8 +455,7 @@ class ExclusionContainer:
             of the geometries. The default is False.
 
         """
-        d = dict(geometry=geometry, buffer=buffer, invert=invert)
-        self.geometries.append(d)
+        pass
 
     def open_files(self):
         """
@@ -510,18 +500,14 @@ class ExclusionContainer:
         """
         Check whether all files in the raster container are closed.
         """
-        return all(isinstance(d["raster"], (str | Path)) for d in self.rasters) and all(
-            isinstance(d["geometry"], (str | Path)) for d in self.geometries
-        )
+        pass
 
     @property
     def all_open(self):
         """
         Check whether all files in the raster container are open.
         """
-        return all(
-            isinstance(d["raster"], rio.DatasetReader) for d in self.rasters
-        ) and all(isinstance(d["geometry"], gpd.GeoSeries) for d in self.geometries)
+        pass
 
     def __repr__(self):
         return (
@@ -562,25 +548,7 @@ class ExclusionContainer:
             Affine transform of the mask.
 
         """
-        if isinstance(geometry, gpd.GeoDataFrame):
-            geometry = geometry.geometry
-        geometry = geometry.to_crs(self.crs)
-
-        dst_args_not_none = [
-            arg is not None for arg in [dst_transform, dst_crs, dst_shape]
-        ]
-        if any(dst_args_not_none):
-            # if any is not None, require that all are not None
-            if not all(dst_args_not_none):
-                raise ValueError(
-                    "Arguments dst_transform, dst_crs, dst_shape "
-                    "should be all None or all defined."
-                )
-            return shape_availability_reprojected(
-                geometry, self, dst_transform, dst_crs, dst_shape
-            )
-        else:
-            return shape_availability(geometry, self)
+        pass
 
     def plot_shape_availability(
         self,
@@ -632,43 +600,11 @@ class ExclusionContainer:
             _description_
 
         """
-        import matplotlib.pyplot as plt
-
-        if isinstance(geometry, gpd.GeoDataFrame):
-            geometry = geometry.geometry
-        geometry = geometry.to_crs(self.crs)
-
-        masked, transform = self.compute_shape_availability(
-            geometry, dst_transform, dst_crs, dst_shape
-        )
-
-        if ax is None:
-            ax = plt.gca()
-
-        show_kwargs.setdefault("cmap", "Greens")
-        ax = show(masked, transform=transform, ax=ax, **show_kwargs)
-        plot_kwargs.setdefault("edgecolor", "k")
-        plot_kwargs.setdefault("color", "None")
-        geometry.plot(ax=ax, **plot_kwargs)
-
-        if set_title:
-            eligible_share = masked.sum() * self.res**2 / geometry.area.sum()
-            ax.set_title(f"Eligible area (green) {eligible_share:.2%}")
-
-        return ax
+        pass
 
 
-def _init_process(shapes_, excluder_, dst_transform_, dst_crs_, dst_shapes_):
-    global shapes, excluder, dst_transform, dst_crs, dst_shapes
-    shapes, excluder = shapes_, excluder_
-    dst_transform, dst_crs, dst_shapes = dst_transform_, dst_crs_, dst_shapes_
 
 
-def _process_func(i):
-    args = (excluder, dst_transform, dst_crs, dst_shapes)
-    with catch_warnings():
-        simplefilter("ignore")
-        return shape_availability_reprojected(shapes.loc[[i]], *args)[0]
 
 
 def compute_availabilitymatrix(
@@ -824,24 +760,6 @@ def regrid(ds, dimx, dimy, **kwargs):
     kwargs.setdefault("src_crs", CRS.from_epsg(4326))
     kwargs.setdefault("dst_crs", CRS.from_epsg(4326))
 
-    def _reproject(src, **kwargs):
-        shape = src.shape[:-2] + dst_shape
-        src, trans = pad_extent(
-            src,
-            src_transform,
-            dst_transform,
-            kwargs["src_crs"],
-            kwargs["dst_crs"],
-            mode="edge",
-        )
-
-        reprojected = rio.warp.reproject(
-            src, empty(shape), src_transform=trans, **kwargs
-        )[0]
-
-        if reprojected.ndim != src.ndim:
-            reprojected = reprojected.squeeze(axis=0)
-        return reprojected
 
     data_vars = ds.data_vars.values() if isinstance(ds, xr.Dataset) else (ds,)
     dtypes = {da.dtype for da in data_vars}

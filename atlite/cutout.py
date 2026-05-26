@@ -213,21 +213,21 @@ class Cutout:
         """
         Name of the cutout.
         """
-        return self.path.stem
+        pass
 
     @property
     def module(self):
         """
         Data module of the cutout.
         """
-        return self.data.attrs.get("module")
+        pass
 
     @property
     def crs(self):
         """
         Coordinate Reference System of the cutout.
         """
-        return CRS(datamodules[atleast_1d(self.module)[0]].crs)
+        pass
 
     @property
     def available_features(self):
@@ -241,37 +241,28 @@ class Cutout:
         """
         Chunking of the cutout data used by dask.
         """
-        chunks = {
-            k.lstrip("chunksize_"): v
-            for k, v in self.data.attrs.items()
-            if k.startswith("chunksize_")
-        }
-        return None if chunks == {} else chunks
+        pass
 
     @property
     def coords(self):
         """
         Geographic coordinates of the cutout.
         """
-        return self.data.coords
+        pass
 
     @property
     def shape(self):
         """
         Size of spatial dimensions (y, x) of the cutout data.
         """
-        return len(self.coords["y"]), len(self.coords["x"])
+        pass
 
     @property
     def extent(self):
         """
         Total extent of the area covered by the cutout (x, X, y, Y).
         """
-        xs, ys = self.coords["x"].values, self.coords["y"].values
-        dx, dy = self.dx, self.dy
-        return np.array(
-            [xs[0] - dx / 2, xs[-1] + dx / 2, ys[0] - dy / 2, ys[-1] + dy / 2]
-        )
+        pass
 
     @property
     def bounds(self):
@@ -299,58 +290,42 @@ class Cutout:
         """
         Get the affine transform of the cutout with reverse y-order.
         """
-        return rio.Affine(
-            self.dx,
-            0,
-            self.coords["x"].values[0] - self.dx / 2,
-            0,
-            -self.dy,
-            self.coords["y"].values[-1] + self.dy / 2,
-        )
+        pass
 
     @property
     def dx(self):
         """
         Spatial resolution on the x coordinates.
         """
-        x = self.coords["x"]
-        return round((x[-1] - x[0]).item() / (x.size - 1), 8)
+        pass
 
     @property
     def dy(self):
         """
         Spatial resolution on the y coordinates.
         """
-        y = self.coords["y"]
-        return round((y[-1] - y[0]).item() / (y.size - 1), 8)
+        pass
 
     @property
     def dt(self):
         """
         Time resolution of the cutout.
         """
-        return pd.infer_freq(self.coords["time"].to_index())
+        pass
 
     @property
     def prepared(self):
         """
         Boolean indicating whether all available features are prepared.
         """
-        return self.prepared_features.sort_index().equals(
-            self.available_features.sort_index()
-        )
+        pass
 
     @property
     def prepared_features(self):
         """
         Get the list of prepared features in the cutout.
         """
-        index = [
-            (self.data[v].attrs["module"], self.data[v].attrs["feature"])
-            for v in self.data
-        ]
-        index = pd.MultiIndex.from_tuples(index, names=["module", "feature"])
-        return pd.Series(list(self.data), index, dtype=object)
+        pass
 
     @CachedAttribute
     def grid(self):
@@ -366,14 +341,7 @@ class Cutout:
             corresponding grid cells.
 
         """
-        xs, ys = np.meshgrid(self.coords["x"], self.coords["y"])
-        coords = np.asarray((np.ravel(xs), np.ravel(ys))).T
-        span = (coords[self.shape[1] + 1] - coords[0]) / 2
-        cells = [box(*c) for c in np.hstack((coords - span, coords + span))]
-        return gpd.GeoDataFrame(
-            {"x": coords[:, 0], "y": coords[:, 1], "geometry": cells},
-            crs=self.crs,
-        )
+        pass
 
     def sel(self, path=None, bounds=None, buffer=0, **kwargs):
         """
@@ -460,9 +428,7 @@ class Cutout:
             File name where to store the cutout, defaults to `cutout.path`.
 
         """
-        if fn is None:
-            fn = self.path
-        self.data.to_netcdf(fn)
+        pass
 
     def __repr__(self):
         start = np.datetime_as_string(self.coords["time"].values[0], unit="D")
@@ -552,20 +518,13 @@ class Cutout:
             A DataArray containing the area per grid cell with coordinates (x,y).
 
         """
-        if crs is None:
-            crs = self.crs
-
-        area = self.grid.to_crs(crs).area
-        return xr.DataArray(
-            area.values.reshape(self.shape),
-            [self.coords["y"], self.coords["x"]],
-        )
+        pass
 
     def uniform_layout(self):
         """
         Get a uniform capacity layout for all grid cells.
         """
-        return xr.DataArray(1, [self.coords["y"], self.coords["x"]])
+        pass
 
     def uniform_density_layout(self, capacity_density, crs=None):
         """
@@ -586,7 +545,7 @@ class Cutout:
             capacity placed within one grid cell.
 
         """
-        return capacity_density * self.area(crs)
+        pass
 
     def equals(self, other):
         """
@@ -632,23 +591,7 @@ class Cutout:
         >>> pv.plot()
 
         """
-
-        x_grid = self.data.x.values
-        y_grid = self.data.y.values
-
-        # Find nearest grid indices
-        ix = np.searchsorted(x_grid, data.x.values, side="left")
-        iy = np.searchsorted(y_grid, data.y.values, side="left")
-
-        # clip if outside of cutout
-        ix = np.clip(ix, 0, len(x_grid) - 1)
-        iy = np.clip(iy, 0, len(y_grid) - 1)
-        # move to best distance - assumes equal size steps
-        ix = ix - (data.x.values - x_grid[ix - 1] < x_grid[ix] - data.x.values)
-        iy = iy - (data.y.values - y_grid[iy - 1] < y_grid[iy] - data.y.values)
-
-        data = data.assign(x=x_grid[ix], y=y_grid[iy]).groupby(["y", "x"])[col].sum()
-        return data.to_xarray().reindex_like(self.data).fillna(0)
+        pass
 
     availabilitymatrix = compute_availabilitymatrix
 

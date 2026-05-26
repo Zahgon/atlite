@@ -113,20 +113,7 @@ def non_bool_dict(d):
 
 def maybe_remove_tmpdir(func):
     """Use this wrapper to make tempfile deletion compatible with windows machines."""
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if kwargs.get("tmpdir", None):
-            res = func(*args, **kwargs)
-        else:
-            kwargs["tmpdir"] = mkdtemp()
-            try:
-                res = func(*args, **kwargs)
-            finally:
-                rmtree(kwargs["tmpdir"])
-        return res
-
-    return wrapper
+    pass
 
 
 @maybe_remove_tmpdir

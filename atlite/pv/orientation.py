@@ -46,46 +46,11 @@ def make_latitude_optimal():
         Latitude in degrees.
 
     """
-
-    def latitude_optimal(lon, lat, solar_position):
-        slope = np.empty_like(lat.values)
-
-        below_25 = np.abs(lat.values) <= np.radians(25)
-        below_50 = np.abs(lat.values) <= np.radians(50)
-
-        slope[below_25] = 0.87 * np.abs(lat.values[below_25])
-        slope[~below_25 & below_50] = 0.76 * np.abs(
-            lat.values[~below_25 & below_50]
-        ) + np.radians(0.31)
-        slope[~below_50] = np.radians(40.0)
-
-        # South orientation for panels on northern hemisphere and vice versa
-        azimuth = np.where(lat.values < 0, 0, pi)
-        return dict(
-            slope=xr.DataArray(slope, coords=lat.coords),
-            azimuth=xr.DataArray(azimuth, coords=lat.coords),
-        )
-
-    return latitude_optimal
+    pass
 
 
-def make_constant(slope, azimuth):
-    slope = radians(slope)
-    azimuth = radians(azimuth)
-
-    def constant(lon, lat, solar_position):
-        return dict(slope=slope, azimuth=azimuth)
-
-    return constant
 
 
-def make_latitude(azimuth=180):
-    azimuth = radians(azimuth)
-
-    def latitude(lon, lat, solar_position):
-        return dict(slope=lat, azimuth=azimuth)
-
-    return latitude
 
 
 def SurfaceOrientation(ds, solar_position, orientation, tracking=None):

@@ -294,8 +294,7 @@ def convert_temperature(ds):
     Return outside temperature (useful for e.g. heat pump T-dependent
     coefficient of performance).
     """
-    # Temperature is in Kelvin
-    return ds["temperature"] - 273.15
+    pass
 
 
 def temperature(cutout, **params):
@@ -308,12 +307,7 @@ def convert_soil_temperature(ds):
     Return soil temperature (useful for e.g. heat pump T-dependent coefficient
     of performance).
     """
-    # Temperature is in Kelvin
-
-    # There are nans where there is sea; by setting them
-    # to zero we guarantee they do not contribute when multiplied
-    # by matrix in atlite/aggregate.py
-    return (ds["soil temperature"] - 273.15).fillna(0.0)
+    pass
 
 
 def soil_temperature(cutout, **params):
@@ -325,8 +319,7 @@ def convert_dewpoint_temperature(ds):
     """
     Return dewpoint temperature.
     """
-    # Temperature is in Kelvin
-    return ds["dewpoint temperature"] - 273.15
+    pass
 
 
 def dewpoint_temperature(cutout, **params):
@@ -335,31 +328,6 @@ def dewpoint_temperature(cutout, **params):
     )
 
 
-def convert_coefficient_of_performance(ds, source, sink_T, c0, c1, c2):
-    assert source in ["air", "soil"], NotImplementedError(
-        "'source' must be one of  ['air', 'soil']"
-    )
-
-    if source == "air":
-        source_T = convert_temperature(ds)
-        if c0 is None:
-            c0 = 6.81
-        if c1 is None:
-            c1 = -0.121
-        if c2 is None:
-            c2 = 0.000630
-    elif source == "soil":
-        source_T = convert_soil_temperature(ds)
-        if c0 is None:
-            c0 = 8.77
-        if c1 is None:
-            c1 = -0.150
-        if c2 is None:
-            c2 = 0.000734
-
-    delta_T = sink_T - source_T
-
-    return c0 + c1 * delta_T + c2 * delta_T**2
 
 
 def coefficient_of_performance(
@@ -402,20 +370,6 @@ def coefficient_of_performance(
 
 
 # heat demand
-def convert_heat_demand(ds, threshold, a, constant, hour_shift):
-    # Temperature is in Kelvin; take daily average
-    T = ds["temperature"]
-    T = T.assign_coords(
-        time=(T.coords["time"] + np.timedelta64(dt.timedelta(hours=hour_shift)))
-    )
-
-    T = T.resample(time="1D").mean(dim="time")
-    threshold += 273.15
-    heat_demand = a * (threshold - T)
-
-    heat_demand = heat_demand.clip(min=0.0)
-
-    return (constant + heat_demand).rename("heat_demand")
 
 
 def heat_demand(cutout, threshold=15.0, a=1.0, constant=0.0, hour_shift=0.0, **params):
@@ -472,20 +426,6 @@ def heat_demand(cutout, threshold=15.0, a=1.0, constant=0.0, hour_shift=0.0, **p
 
 
 # cooling demand
-def convert_cooling_demand(ds, threshold, a, constant, hour_shift):
-    # Temperature is in Kelvin; take daily average
-    T = ds["temperature"]
-    T = T.assign_coords(
-        time=(T.coords["time"] + np.timedelta64(dt.timedelta(hours=hour_shift)))
-    )
-
-    T = T.resample(time="1D").mean(dim="time")
-    threshold += 273.15
-    cooling_demand = a * (T - threshold)
-
-    cooling_demand = cooling_demand.clip(min=0.0)
-
-    return (constant + cooling_demand).rename("cooling_demand")
 
 
 def cooling_demand(
@@ -547,29 +487,6 @@ def cooling_demand(
 
 
 # solar thermal collectors
-def convert_solar_thermal(
-    ds, orientation, trigon_model, clearsky_model, c0, c1, t_store
-):
-    # convert storage temperature to Kelvin in line with reanalysis data
-    t_store += 273.15
-
-    # Downward shortwave radiation flux is in W/m^2
-    # http://rda.ucar.edu/datasets/ds094.0/#metadata/detailed.html?_do=y
-    solar_position = SolarPosition(ds)
-    surface_orientation = SurfaceOrientation(ds, solar_position, orientation)
-    irradiation = TiltedIrradiation(
-        ds, solar_position, surface_orientation, trigon_model, clearsky_model
-    )
-
-    # overall efficiency; can be negative, so need to remove negative values
-    # below
-    eta = c0 - c1 * (
-        (t_store - ds["temperature"]) / irradiation.where(irradiation != 0)
-    ).fillna(0)
-
-    output = irradiation * eta
-
-    return output.where(output > 0.0, 0.0)
 
 
 def solar_thermal(
@@ -639,27 +556,7 @@ def convert_wind(
     """
     Convert wind speeds for turbine to wind energy generation.
     """
-    V, POW, hub_height, P = itemgetter("V", "POW", "hub_height", "P")(turbine)
-
-    wnd_hub = windm.extrapolate_wind_speed(
-        ds, to_height=hub_height, method=interpolation_method
-    )
-
-    def apply_power_curve(da):
-        return np.interp(da, V, POW / P)
-
-    da = xr.apply_ufunc(
-        apply_power_curve,
-        wnd_hub,
-        input_core_dims=[[]],
-        output_core_dims=[[]],
-        output_dtypes=[wnd_hub.dtype],
-        dask="parallelized",
-    )
-
-    da.attrs["units"] = "MWh/MWp"
-    da = da.rename("specific generation")
-    return da
+    pass
 
 
 def wind(
@@ -745,26 +642,6 @@ def wind(
 
 
 # irradiation
-def convert_irradiation(
-    ds,
-    orientation,
-    tracking=None,
-    irradiation="total",
-    trigon_model="simple",
-    clearsky_model="simple",
-):
-    solar_position = SolarPosition(ds)
-    surface_orientation = SurfaceOrientation(ds, solar_position, orientation, tracking)
-    irradiation = TiltedIrradiation(
-        ds,
-        solar_position,
-        surface_orientation,
-        trigon_model=trigon_model,
-        clearsky_model=clearsky_model,
-        tracking=tracking,
-        irradiation=irradiation,
-    )
-    return irradiation
 
 
 def irradiation(
@@ -837,21 +714,6 @@ def irradiation(
 
 
 # solar PV
-def convert_pv(
-    ds, panel, orientation, tracking, trigon_model="simple", clearsky_model="simple"
-):
-    solar_position = SolarPosition(ds)
-    surface_orientation = SurfaceOrientation(ds, solar_position, orientation, tracking)
-    irradiation = TiltedIrradiation(
-        ds,
-        solar_position,
-        surface_orientation,
-        trigon_model=trigon_model,
-        clearsky_model=clearsky_model,
-        tracking=tracking,
-    )
-    solar_panel = SolarPanelModel(ds, irradiation, panel)
-    return solar_panel
 
 
 def pv(cutout, panel, orientation, tracking=None, clearsky_model=None, **params):
@@ -937,38 +799,6 @@ def pv(cutout, panel, orientation, tracking=None, clearsky_model=None, **params)
 
 
 # solar CSP
-def convert_csp(ds, installation):
-    solar_position = SolarPosition(ds)
-
-    tech = installation["technology"]
-    if tech == "parabolic trough":
-        irradiation = ds["influx_direct"]
-    elif tech == "solar tower":
-        irradiation = cspm.calculate_dni(ds, solar_position)
-    else:
-        raise ValueError(f'Unknown CSP technology option "{tech}".')
-
-    # Determine solar_position dependend efficiency for each grid cell and time step
-    efficiency = installation["efficiency"].interp(
-        altitude=solar_position["altitude"], azimuth=solar_position["azimuth"]
-    )
-
-    # Thermal system output
-    da = efficiency * irradiation
-
-    # output relative to reference irradiance
-    da /= installation["r_irradiance"]
-
-    # Limit output to max of reference irradiance
-    da = da.clip(max=1.0)
-
-    # Fill NaNs originating from DNI or solar positions outside efficiency bounds
-    da = da.fillna(0.0)
-
-    da.attrs["units"] = "kWh/kW_ref"
-    da = da.rename("specific generation")
-
-    return da
 
 
 def csp(cutout, installation, technology=None, **params):
@@ -1025,13 +855,6 @@ def csp(cutout, installation, technology=None, **params):
 
 
 # hydro
-def convert_runoff(ds, weight_with_height=True):
-    runoff = ds["runoff"]
-
-    if weight_with_height:
-        runoff = runoff * ds["height"]
-
-    return runoff
 
 
 def runoff(
@@ -1330,11 +1153,6 @@ def line_rating(
 
     data = cutout.data.stack(spatial=["y", "x"])
 
-    def get_azimuth(shape):
-        coords = np.array(shape.coords)
-        start = coords[0]
-        end = coords[-1]
-        return np.arctan2(start[0] - end[0], start[1] - end[1])
 
     azimuth = shapes.apply(get_azimuth)
     azimuth = azimuth.where(azimuth >= 0, azimuth + np.pi)

@@ -201,27 +201,8 @@ def get_cspinstallationconfig(installation):
     return config
 
 
-def solarpanel_rated_capacity_per_unit(panel):
-    # unit is m^2 here
-
-    if isinstance(panel, (str | Path)):
-        panel = get_solarpanelconfig(panel)
-
-    model = panel.get("model", "huld")
-    if model == "huld":
-        return panel["efficiency"]
-    elif model == "bofinger":
-        # one unit in the capacity layout is interpreted as one panel of a
-        # capacity (A + 1000 * B + log(1000) * C) * 1000W/m^2 * (k / 1000)
-        A, B, C = itemgetter("A", "B", "C")(panel)
-        return (A + B * 1000.0 + C * np.log(1000.0)) * 1e3
 
 
-def windturbine_rated_capacity_per_unit(turbine):
-    if isinstance(turbine, (str | Path)):
-        turbine = get_windturbineconfig(turbine)
-
-    return turbine["P"]
 
 
 def windturbine_smooth(turbine, params=None):
